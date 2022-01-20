@@ -598,162 +598,98 @@ anova(fit_OneFactor_intfixed_i, fit_OneFactor_i)
 summary(fit_OneFactor_i, fit.measures=TRUE)
 
 ##########################################################
-# Model selection
+# Gradient
 
-# Order data for saemix
-HUBU_sub <- HUBUThickness[,c(36,37,35,38,40)]
-HUBU_ordered <- HUBU_sub[order(HUBU_sub[,1], HUBU_sub[,2], HUBU_sub[,3], HUBU_sub[,4]),]
+require(brainGraph)
+data("dk")
 
-# Read data in
-HUBU.data <- saemixData(name.data       = HUBU_ordered,
-                        name.group      = "subject_id",
-                        name.predictors = "age_mri",
-                        name.response   = "MeanThickness",
-                        name.covariates = c("sex","euler"))
+dk$area <- c(
+  "bank of the superior temporal sulcus"
+  ,"caudal anterior cingulate"           
+  ,"caudal middle frontal gyrus"         
+  ,"cuneus"                              
+  ,"entorhinal"                          
+  ,"fusiform"                            
+  ,"inferior parietal lobule"            
+  ,"inferior temporal gyrus"             
+  ,"isthmus cingulate cortex"            
+  , "lateral occipital gyrus"             
+  , "lateral orbitofrontal"               
+  , "lingual"                             
+  , "medial orbitofrontal"                
+  , "middle temporal gyrus"               
+  , "parahippocampal"                     
+  , "paracentral"                         
+  , "pars opercularis"                    
+  , "pars orbitalis"                      
+  , "pars triangularis"                   
+  , "pericalcarine"                       
+  , "postcentral"                         
+  , "posterior cingulate cortex"          
+  , "precentral"                          
+  , "precuneus"                           
+  , "rostral anterior cingulate cortex"   
+  , "rostral middle frontal gyrus"        
+  , "superior frontal gyrus"              
+  , "superior parietal lobule"            
+  , "superior temporal gyrus"             
+  , "supramarginal gyrus"                 
+  , "frontal pole"                        
+  , "temporal pole"                       
+  , "transverse temporal"                 
+  , "insula"                              
+  , "bank of the superior temporal sulcus"
+  , "caudal anterior cingulate"           
+  , "caudal middle frontal gyrus"         
+  , "cuneus"                              
+  , "entorhinal"                          
+  , "fusiform"                            
+  , "inferior parietal lobule"            
+  , "inferior temporal gyrus"             
+  , "isthmus cingulate cortex"            
+  , "lateral occipital gyrus"             
+  , "lateral orbitofrontal"               
+  , "lingual"                             
+  , "medial orbitofrontal"                
+  , "middle temporal gyrus"               
+  , "parahippocampal"                     
+  , "paracentral"                         
+  , "pars opercularis"                    
+  , "pars orbitalis"                      
+  , "pars triangularis"                   
+  , "pericalcarine"                       
+  , "postcentral"                         
+  , "posterior cingulate cortex"          
+  , "precentral"                          
+  , "precuneus"                           
+  , "rostral anterior cingulate cortex"   
+  , "rostral middle frontal gyrus"        
+  , "superior frontal gyrus"              
+  , "superior parietal lobule"            
+  , "superior temporal gyrus"             
+  , "supramarginal gyrus"                 
+  , "frontal pole"                        
+  , "temporal pole"                       
+  , "transverse temporal"                 
+  , "insula"
+)        
 
-# Define 4 parameter logistic function
-logistic4.model <- function(psi, id, xidep){
-  age_mri     <- xidep[, 1]   
-  lower.asymp <- psi[id, 1]
-  upper.asymp <- psi[id, 2]
-  inflec      <- psi[id, 3]
-  hill        <- psi[id, 4]
-  resp <- lower.asymp + ((upper.asymp - lower.asymp)/(1 + (age_mri / inflec)^-hill))
-  return(resp)
-}
+mni_y_av <- aggregate(dk$y.mni, list(dk$area), mean) #average the y coordinate for both hemispheres 
+colnames(mni_y_av) <- c("area", "mni.y")
 
-# Set up the saemix model
-HUBU.model0000 <- saemixModel(model = logistic4.model,
-                          description = "4-param. logistic", 
-                          psi0 = matrix(c(2.6, 2.9, 15.4, -7.2), 
-                                        ncol = 4, 
-                                        byrow = TRUE, 
-                                        dimnames = list(NULL, 
-                                                        c("lower.asymp","upper.asymp","inflec","hill"))),
-                          omega.init = diag(rep(0.5, 4)),
-                          covariate.model = matrix(c(0, 0, 0, 0, 0, 0, 0, 0), ncol = 4, byrow = TRUE))
+mni_y_av[-2] <- data.frame(lapply(mni_y_av[-2], gsub, pattern = " gyrus", replacement = "", fixed = TRUE))
+mni_y_av[-2] <- data.frame(lapply(mni_y_av[-2], gsub, pattern = " lobule", replacement = "", fixed = TRUE))
+mni_y_av[-2] <- data.frame(lapply(mni_y_av[-2], gsub, pattern = "bank of the superior temporal sulcus", replacement = "bankssts", fixed = TRUE))
+mni_y_av[-2] <- data.frame(lapply(mni_y_av[-2], gsub, pattern = " cortex", replacement = "", fixed = TRUE))
+mni_y_av[-2] <- data.frame(lapply(mni_y_av[-2], gsub, pattern = " ", replacement = "", fixed = TRUE))
 
-opt <- list(seed = 94352514, save = FALSE, save.graphs = FALSE)
+postant = merge(sumld, mni_y_av, by.x = 'variable', by.y = 'area', all.x = T)
 
-HUBU.fit0000 <- saemix(HUBU.model0000, HUBU.data, opt)
+cor.test(postant$mean, postant$mni.y)
 
+regressionBF(
+  formula = mean ~ mni.y,
+  data = postant
+)
 
-
-HUBU.model10000000 <- saemixModel(model = logistic4.model,
-                              description = "4-param. logistic", 
-                              psi0 = matrix(c(2.6, 2.9, 15.4, -7.2), 
-                                            ncol = 4, 
-                                            byrow = TRUE, 
-                                            dimnames = list(NULL, 
-                                                            c("lower.asymp","upper.asymp","inflec","hill"))),
-                              omega.init = diag(rep(0.5, 4)),
-                              covariate.model = matrix(c(1, 0, 0, 0, 0, 0, 0, 0), ncol = 4, byrow = TRUE))
-
-HUBU.fit1000000 <- saemix(HUBU.model10000000, HUBU.data, opt)
-
-
-HUBU.model01000000 <- saemixModel(model = logistic4.model,
-                                  description = "4-param. logistic", 
-                                  psi0 = matrix(c(2.6, 2.9, 15.4, -7.2), 
-                                                ncol = 4, 
-                                                byrow = TRUE, 
-                                                dimnames = list(NULL, 
-                                                                c("lower.asymp","upper.asymp","inflec","hill"))),
-                                  omega.init = diag(rep(0.5, 4)),
-                                  covariate.model = matrix(c(0, 1, 0, 0, 0, 0, 0, 0), ncol = 4, byrow = TRUE))
-
-HUBU.fit0100000 <- saemix(HUBU.model01000000, HUBU.data, opt)
-
-
-HUBU.model01100000 <- saemixModel(model = logistic4.model,
-                                  description = "4-param. logistic", 
-                                  psi0 = matrix(c(2.6, 2.9, 15.4, -7.2), 
-                                                ncol = 4, 
-                                                byrow = TRUE, 
-                                                dimnames = list(NULL, 
-                                                                c("lower.asymp","upper.asymp","inflec","hill"))),
-                                  omega.init = diag(rep(0.5, 4)),
-                                  covariate.model = matrix(c(0, 1, 1, 0, 0, 0, 0, 0), ncol = 4, byrow = TRUE))
-
-HUBU.fit0110000 <- saemix(HUBU.model01100000, HUBU.data, opt)
-
-
-HUBU.model01110000 <- saemixModel(model = logistic4.model,
-                                  description = "4-param. logistic", 
-                                  psi0 = matrix(c(2.6, 2.9, 15.4, -7.2), 
-                                                ncol = 4, 
-                                                byrow = TRUE, 
-                                                dimnames = list(NULL, 
-                                                                c("lower.asymp","upper.asymp","inflec","hill"))),
-                                  omega.init = diag(rep(0.5, 4)),
-                                  covariate.model = matrix(c(0, 1, 1, 1, 0, 0, 0, 0), ncol = 4, byrow = TRUE))
-
-HUBU.fit0111000 <- saemix(HUBU.model01110000, HUBU.data, opt)
-
-
-HUBU.model01101000 <- saemixModel(model = logistic4.model,
-                                  description = "4-param. logistic", 
-                                  psi0 = matrix(c(2.6, 2.9, 15.4, -7.2), 
-                                                ncol = 4, 
-                                                byrow = TRUE, 
-                                                dimnames = list(NULL, 
-                                                                c("lower.asymp","upper.asymp","inflec","hill"))),
-                                  omega.init = diag(rep(0.5, 4)),
-                                  covariate.model = matrix(c(0, 1, 1, 0, 1, 0, 0, 0), ncol = 4, byrow = TRUE))
-
-HUBU.fit01101000 <- saemix(HUBU.model01101000, HUBU.data, opt)
-
-
-HUBU.model01101100 <- saemixModel(model = logistic4.model,
-                                  description = "4-param. logistic", 
-                                  psi0 = matrix(c(2.6, 2.9, 15.4, -7.2), 
-                                                ncol = 4, 
-                                                byrow = TRUE, 
-                                                dimnames = list(NULL, 
-                                                                c("lower.asymp","upper.asymp","inflec","hill"))),
-                                  omega.init = diag(rep(0.5, 4)),
-                                  covariate.model = matrix(c(0, 1, 1, 0, 1, 1, 0, 0), ncol = 4, byrow = TRUE))
-
-HUBU.fit01101100 <- saemix(HUBU.model01101100, HUBU.data, opt)
-
-
-HUBU.model01101010 <- saemixModel(model = logistic4.model,
-                                  description = "4-param. logistic", 
-                                  psi0 = matrix(c(2.6, 2.9, 15.4, -7.2), 
-                                                ncol = 4, 
-                                                byrow = TRUE, 
-                                                dimnames = list(NULL, 
-                                                                c("lower.asymp","upper.asymp","inflec","hill"))),
-                                  omega.init = diag(rep(0.5, 4)),
-                                  covariate.model = matrix(c(0, 1, 1, 0, 1, 0, 1, 0), ncol = 4, byrow = TRUE))
-
-HUBU.fit01101010 <- saemix(HUBU.model01101010, HUBU.data, opt)
-
-
-HUBU.model01101001 <- saemixModel(model = logistic4.model,
-                                  description = "4-param. logistic", 
-                                  psi0 = matrix(c(2.6, 2.9, 15.4, -7.2), 
-                                                ncol = 4, 
-                                                byrow = TRUE, 
-                                                dimnames = list(NULL, 
-                                                                c("lower.asymp","upper.asymp","inflec","hill"))),
-                                  omega.init = diag(rep(0.5, 4)),
-                                  covariate.model = matrix(c(0, 1, 1, 0, 1, 0, 0, 1), ncol = 4, byrow = TRUE))
-
-HUBU.fit01101001 <- saemix(HUBU.model01101001, HUBU.data, opt)
-
-
-# Final model
-HUBU.model01101000 <- saemixModel(model = logistic4.model,
-                                  description = "4-param. logistic", 
-                                  psi0 = matrix(c(2.6, 2.9, 15.4, -7.2), 
-                                                ncol = 4, 
-                                                byrow = TRUE, 
-                                                dimnames = list(NULL, 
-                                                                c("lower.asymp","upper.asymp","inflec","hill"))),
-                                  omega.init = diag(rep(0.5, 4)),
-                                  covariate.model = matrix(c(0, 1, 1, 0, 1, 0, 0, 0), ncol = 4, byrow = TRUE))
-
-opt <- list(seed = 94352514, save = FALSE, save.graphs = FALSE)
-
-HUBU.fit01101000 <- saemix(HUBU.model01101000, HUBU.data, opt)
+##########################################################
